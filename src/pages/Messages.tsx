@@ -1,0 +1,175 @@
+import React, { useEffect, useState } from "react";
+import socketIOClient from "socket.io-client";
+import { useNavigate } from "react-router-dom";
+import dotenv from "dotenv";
+
+const socket = socketIOClient("http://localhost:5000");
+dotenv.config();
+const apiKey = process.env.REACT_APP_API_URL;
+console.log(apiKey);
+const Messages = () => {
+  const [messages, setMessages] = useState<any[]>([]);
+  const [message, setMessage] = useState("");
+  const [receiverId, setReceiverId] = useState("67880bd132d573e0dbf7461a");
+  const [userId, setUserId] = useState("");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Fetch user ID from localStorage
+    const loggedInUserId = localStorage.getItem("userId");
+    setUserId(loggedInUserId || "");
+
+    console.log(`/api/messages/conversation/${loggedInUserId}/${receiverId}`);
+
+    if (!loggedInUserId) {
+      navigate("/login");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+    console.log(token);
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    // Socket listener for new messages
+    socket.on("receiveMessage", (newMessage: any) => {
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+    });
+
+    // Fetch messages between the logged-in user and the receiver
+    const fetchMessages = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/messages/conversation/${loggedInUserId}/${receiverId}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.error(
+            "Failed to fetch messages:",
+            response.status,
+            await response.text()
+          );
+          return;
+        }
+
+        const data = await response.json();
+        setMessages(data);
+      } catch (err) {
+        console.error("Error fetching messages:", err);
+      }
+    };
+
+    fetchMessages();
+
+    // Cleanup socket listener
+    return () => {
+      socket.off("receiveMessage");
+    };
+  }, [receiverId, navigate]);
+
+  const handleSendMessage = async () => {
+    if (!message.trim() || !receiverId || !userId) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    try {
+      // Emit message through socket
+      socket.emit("sendMessage", {
+        senderId: userId,
+        receiverId,
+        content: message,
+      });
+
+      // Send message to the API to save in database
+      const response = await fetch(`http://localhost:5000/api/messages/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          senderId: userId,
+          receiverId,
+          content: message,
+        }),
+      });
+
+      if (!response.ok) {
+        console.error("Failed to send message to API");
+        return;
+      }
+
+      const newMessage = await response.json();
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      setMessage("");
+    } catch (err) {
+      console.error("Error sending message:", err);
+    }
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto p-6">
+      <div className="bg-white rounded-lg shadow-lg p-6">
+        <h2 className="text-2xl font-semibold text-center mb-6">Messages</h2>
+
+        {/* Receiver Input */}
+        <div className="mb-4">
+          <input
+            type="text"
+            value={receiverId}
+            onChange={(e) => setReceiverId(e.target.value)}
+            placeholder="Enter receiver's username or email"
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        {/* Messages Display */}
+        <div className="h-96 overflow-y-auto mb-4 p-4 bg-gray-100 rounded-md">
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`mb-2 p-2 rounded-lg ${
+                msg.senderId === userId
+                  ? "bg-blue-500 text-white self-end"
+                  : "bg-gray-300 text-black"
+              }`}
+            >
+              <p>{msg.content}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Send Message */}
+        <div className="flex">
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Type your message..."
+            rows={2}
+            className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            onClick={handleSendMessage}
+            className="ml-4 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Messages;

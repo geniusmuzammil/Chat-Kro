@@ -1,33 +1,32 @@
-// src/pages/Login.tsx
+// src/pages/Register.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-const Login = () => {
-  const [emailOrUsername, setEmailOrUsername] = useState("");
+const Register = () => {
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch("http://localhost:5000/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ usernameOrEmail: emailOrUsername, password }), // Correct key here
+        body: JSON.stringify({ username, email, password }),
       });
 
       const data = await response.json();
-      console.log(data);
 
       if (response.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("userId", data.payload.userId);
-        console.log("token saved");
-        navigate("/messages");
+        setSuccess("Registration successful! Redirecting to login...");
+        setTimeout(() => navigate("/login"), 3000); // Redirect after 3 seconds
       } else {
         setError(data.msg || "Something went wrong");
       }
@@ -39,22 +38,41 @@ const Login = () => {
   return (
     <div className="flex justify-center items-center h-screen bg-gray-100">
       <div className="bg-white p-8 rounded-md shadow-md w-full max-w-sm">
-        <h2 className="text-2xl font-bold text-center mb-4">Login</h2>
+        <h2 className="text-2xl font-bold text-center mb-4">Register</h2>
         {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-        <form onSubmit={handleLogin}>
+        {success && (
+          <p className="text-green-500 text-center mb-4">{success}</p>
+        )}
+        <form onSubmit={handleRegister}>
           <div className="mb-4">
             <label
               className="block text-sm font-medium text-gray-700"
-              htmlFor="emailOrUsername"
+              htmlFor="username"
             >
-              Email or Username
+              Username
             </label>
             <input
               type="text"
-              id="emailOrUsername"
+              id="username"
               className="w-full p-2 mt-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={emailOrUsername}
-              onChange={(e) => setEmailOrUsername(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label
+              className="block text-sm font-medium text-gray-700"
+              htmlFor="email"
+            >
+              Email
+            </label>
+            <input
+              type="email"
+              id="email"
+              className="w-full p-2 mt-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
@@ -78,16 +96,16 @@ const Login = () => {
             type="submit"
             className="w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 focus:outline-none"
           >
-            Login
+            Register
           </button>
         </form>
         <div className="mt-4 text-center">
-          <span>Don't have an account?</span>
+          <span>Already have an account?</span>
           <button
-            onClick={() => navigate("/register")}
+            onClick={() => navigate("/login")}
             className="text-blue-500 underline ml-1"
           >
-            Register
+            Login
           </button>
         </div>
       </div>
@@ -95,4 +113,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Register;

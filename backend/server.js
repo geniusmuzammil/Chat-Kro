@@ -1,6 +1,6 @@
 const express = require('express');
 const http = require('http');
-const socketIo = require('socket.io');
+const { Server } = require('socket.io'); // Updated import for Socket.IO
 const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
@@ -11,10 +11,22 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+
+// Configure Socket.IO with CORS
+const io = new Server(server, {
+  cors: {
+    origin: 'http://localhost:5173', 
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', 
+  credentials: true, // Allow cookies or authorization headers
+}));
+
 app.use(express.json());
 
 // Connect to database
@@ -29,7 +41,7 @@ app.use('/api/messages', authMiddleware, messageRoutes); // Apply middleware to 
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('a user connected');
-  
+
   socket.on('sendMessage', (message) => {
     io.emit('receiveMessage', message); // Broadcast message to all clients
   });
