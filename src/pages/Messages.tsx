@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom";
 import dotenv from "dotenv";
 
 const socket = socketIOClient("http://localhost:5000");
-dotenv.config();
-const apiKey = process.env.REACT_APP_API_URL;
-console.log(apiKey);
+// dotenv.config();
+// const apiKey = process.env.REACT_APP_API_URL;
+// console.log(apiKey);
 const Messages = () => {
   const [messages, setMessages] = useState<any[]>([]);
   const [message, setMessage] = useState("");
@@ -75,6 +75,12 @@ const Messages = () => {
     };
   }, [receiverId, navigate]);
 
+  const handleLogout = () => {
+    localStorage.removeItem("token"); // Remove JWT
+    localStorage.removeItem("userId"); // Remove User ID
+    navigate("/login"); // Redirect to login page
+  };
+
   const handleSendMessage = async () => {
     if (!message.trim() || !receiverId || !userId) return;
 
@@ -85,7 +91,7 @@ const Messages = () => {
     }
 
     try {
-      // Emit message through socket
+      // Emit message through socket (server should broadcast this to recipient)
       socket.emit("sendMessage", {
         senderId: userId,
         receiverId,
@@ -111,9 +117,7 @@ const Messages = () => {
         return;
       }
 
-      const newMessage = await response.json();
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
-      setMessage("");
+      setMessage(""); // Clear the input field
     } catch (err) {
       console.error("Error sending message:", err);
     }
@@ -135,7 +139,6 @@ const Messages = () => {
           />
         </div>
 
-        {/* Messages Display */}
         <div className="h-96 overflow-y-auto mb-4 p-4 bg-gray-100 rounded-md">
           {messages.map((msg, index) => (
             <div
@@ -168,6 +171,12 @@ const Messages = () => {
           </button>
         </div>
       </div>
+      <button
+        onClick={handleLogout}
+        className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+      >
+        Logout
+      </button>
     </div>
   );
 };

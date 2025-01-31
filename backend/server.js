@@ -38,6 +38,8 @@ app.use('/api/auth', authRoutes);
 // Protected message routes
 app.use('/api/messages', authMiddleware, messageRoutes); // Apply middleware to message routes
 
+
+
 // Socket.io connection
 io.on('connection', (socket) => {
   console.log('a user connected');
