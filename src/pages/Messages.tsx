@@ -4,14 +4,13 @@ import { useNavigate } from "react-router-dom";
 import dotenv from "dotenv";
 
 const socket = socketIOClient("http://localhost:5000");
-// dotenv.config();
-// const apiKey = process.env.REACT_APP_API_URL;
-// console.log(apiKey);
+
 const Messages = () => {
   const [messages, setMessages] = useState<any[]>([]);
   const [message, setMessage] = useState("");
-  const [receiverId, setReceiverId] = useState("67880bd132d573e0dbf7461a");
+  const [receiverId, setReceiverId] = useState("");
   const [userId, setUserId] = useState("");
+  const [recipients, setRecipients] = useState<any[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,19 +18,47 @@ const Messages = () => {
     const loggedInUserId = localStorage.getItem("userId");
     setUserId(loggedInUserId || "");
 
-    console.log(`/api/messages/conversation/${loggedInUserId}/${receiverId}`);
-
     if (!loggedInUserId) {
       navigate("/login");
       return;
     }
 
     const token = localStorage.getItem("token");
-    console.log(token);
     if (!token) {
       navigate("/login");
       return;
     }
+
+    // Fetch recipients
+    const fetchRecipients = async () => {
+      try {
+        const response = await fetch(
+          `http://localhost:5000/api/messages/recipients/${loggedInUserId}`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          console.error(
+            "Failed to fetch recipients:",
+            response.status,
+            await response.text()
+          );
+          return;
+        }
+
+        const data = await response.json();
+        setRecipients(data);
+      } catch (err) {
+        console.error("Error fetching recipients:", err);
+      }
+    };
+
+    fetchRecipients();
 
     // Socket listener for new messages
     socket.on("receiveMessage", (newMessage: any) => {
@@ -67,7 +94,9 @@ const Messages = () => {
       }
     };
 
-    fetchMessages();
+    if (receiverId) {
+      fetchMessages();
+    }
 
     // Cleanup socket listener
     return () => {
@@ -128,15 +157,20 @@ const Messages = () => {
       <div className="bg-white rounded-lg shadow-lg p-6">
         <h2 className="text-2xl font-semibold text-center mb-6">Messages</h2>
 
-        {/* Receiver Input */}
+        {/* Receiver Dropdown */}
         <div className="mb-4">
-          <input
-            type="text"
+          <select
             value={receiverId}
             onChange={(e) => setReceiverId(e.target.value)}
-            placeholder="Enter receiver's username or email"
             className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+          >
+            <option value="">Select a recipient</option>
+            {recipients.map((recipient) => (
+              <option key={recipient._id} value={recipient._id}>
+                {recipient.username || recipient._id}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="h-96 overflow-y-auto mb-4 p-4 bg-gray-100 rounded-md">
